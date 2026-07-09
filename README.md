@@ -1,9 +1,10 @@
 # 🏊‍♂️ Triathlon Training Assistant
-[Node.js] [JavaScript] [Socket.IO] [MIT]
+![Node.js](https://img.shields.io/badge/Node.js-339933?logo=nodedotjs&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black)
+![Socket.IO](https://img.shields.io/badge/Socket.IO-010101?logo=socketdotio&logoColor=white)
+![MIT License](https://img.shields.io/badge/License-MIT-green)
 
 A real-time web application that helps triathlon athletes improve their training experience through live communication, interactive interfaces and real-time feedback.
-
-This project was developed as part of a university team project at Universidad Carlos III de Madrid.
 
 ---
 
@@ -23,19 +24,19 @@ This project was developed as part of a university team project at Universidad C
 
 Below are some screenshots of the desktop application during different stages of a training session.
 
-### Home Screen
+### Application Home
 
 <p align="center">
   <img src="assets/screenshots/home.png" width="850">
 </p>
 
-### Training Session
+### Training Dashboard
 
 <p align="center">
   <img src="assets/screenshots/training.png" width="850">
 </p>
 
-### Training Summary
+### Session Summary
 
 <p align="center">
   <img src="assets/screenshots/summary.png" width="850">
@@ -47,7 +48,7 @@ Below are some screenshots of the desktop application during different stages of
 
 - Real-time posture analysis using MediaPipe Pose.
 - Live communication between desktop and mobile devices using Socket.IO.
-- Voice commands and speech feedback using the Web Speech API.
+- Voice commands and real-time speech feedback using the Web Speech API.
 - Multiple training modes for running, cycling and swimming.
 - Interactive dashboard with live training statistics.
 - Nearby sports facilities map powered by Leaflet and OpenStreetMap.
@@ -74,6 +75,8 @@ Below are some screenshots of the desktop application during different stages of
 ```
 
 The system uses a distributed client-server architecture that enables real-time communication between the mobile device and the desktop application.
+
+---
 
 ## 💻 Technologies
 
@@ -109,6 +112,7 @@ npm run tunnel
 ```
 
 Once the server is running, open your browser and access the application through the generated local address.
+The project can be accessed from both desktop and mobile devices connected to the same local network.
 
 > **Note**
 >
@@ -118,7 +122,7 @@ Once the server is running, open your browser and access the application through
 
 ## 👨‍💻 My Contributions
 
-As part of the development team, I contributed to:
+The project was developed as part of a team. My main responsibilities included:
 
 - Development of client-side functionality in `app.js`.
 - Design and implementation of user interface components using HTML and CSS.
