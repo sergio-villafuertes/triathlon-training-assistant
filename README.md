@@ -21,10 +21,27 @@ This project was developed as part of a university team project at Universidad C
 
 ## 📸 Screenshots
 
-![Desktop Dashboard](assets/screenshots/desktop-dashboard.png)
-![bici-mode](assets/screenshots/bici-mode.png)
-![evaluation](assets/screenshots/evaluation.png)
+Below are some screenshots of the desktop application during different stages of a training session.
 
+### Home Screen
+
+<p align="center">
+  <img src="assets/screenshots/home.png" width="850">
+</p>
+
+### Training Session
+
+<p align="center">
+  <img src="assets/screenshots/training.png" width="850">
+</p>
+
+### Training Summary
+
+<p align="center">
+  <img src="assets/screenshots/summary.png" width="850">
+</p>
+
+---
 
 ## 🚀 Features
 
