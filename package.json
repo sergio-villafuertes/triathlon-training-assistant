@@ -1,0 +1,14 @@
+{
+  "name": "triathlon-training-assistant",
+  "version": "1.0.0",
+  "description": "Real-time web application that assists triathlon training through pose detection, voice commands and real-time communication.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "tunnel": "node runner.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
+  }
+}

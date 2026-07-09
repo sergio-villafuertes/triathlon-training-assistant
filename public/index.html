@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Triatlón IA - Espejo Digital</title>
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Triatlón <span>AI Coach</span></h1>
+    </header>
+
+    <div id="contenedor-video">
+      <div id="loading-overlay">
+        <div class="spinner"></div>
+        <p>Cargando Motores de IA...</p>
+      </div>
+      <video id="video" width="800" height="600" autoplay playsinline></video>
+      <canvas id="canvas" width="800" height="600"></canvas>
+      <div class="crosshair top-left"></div>
+      <div class="crosshair top-right"></div>
+      <div class="crosshair bottom-left"></div>
+      <div class="crosshair bottom-right"></div>
+    </div>
+
+    <div id="dashboard">
+      <div class="panel-info">
+        <span class="label">Modo / Tiempo</span>
+        <span id="estado-entrenamiento" class="value">Calibrando</span>
+        <div id="crono" class="info-extra">00:00</div>
+      </div>
+      <div class="panel-info alerta">
+        <span class="label">Guía e Instrucciones</span>
+        <h3 id="mensaje">Sitúate en T-Pose frente a la cámara...</h3>
+      </div>
+      <div class="panel-info">
+        <span class="label">Deporte / Fallos</span>
+        <span id="modo-deporte" class="value" style="color: var(--text-muted)">?</span>
+        <div id="contador-errores" class="info-extra">Errores: 0</div>
+      </div>
+    </div>
+
+    <!-- OVERLAY RESUMEN FINAL -->
+    <div id="overlay-resumen" class="oculto">
+      <div class="tarjeta-resumen">
+        <h2>📊 Resumen del Entrenamiento</h2>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-label">Deporte practicado</span>
+            <span class="stat-valor" id="resumen-deporte">-</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Tiempo Activo</span>
+            <span class="stat-valor" id="resumen-tiempo">00:00</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Errores Posturales y Correcciones</span>
+            <span class="stat-valor" id="resumen-errores">0</span>
+          </div>
+        </div>
+        <p style="margin-top: 20px; font-size: 0.9rem; color: var(--text-muted)">Volviendo al menú principal en 10 segundos...</p>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

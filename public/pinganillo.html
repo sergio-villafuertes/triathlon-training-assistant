@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pinganillo Inteligente</title>
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="pinganillo.css" />
+  </head>
+  <body class="app-body">
+    <header class="app-header">
+      <h1 class="app-title">Audio <span class="app-title__highlight">Receiver</span></h1>
+    </header>
+
+    <div id="icono-auricular" class="headset-icon">🎧</div>
+
+    <button id="btn-activar" class="btn-connect">CONECTAR SISTEMA</button>
+
+    <div class="status-panel" id="panel-estado">
+      <span class="status-panel__label">Estado de Conexión</span>
+      <p class="status-panel__message" id="estado">Sistema inactivo. Esperando conexión del usuario...</p>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script>
+      const socket = io();
+      const boton = document.getElementById("btn-activar");
+      const estado = document.getElementById("estado");
+      const icono = document.getElementById("icono-auricular");
+      const panelEstado = document.getElementById("panel-estado");
+
+      let activo = false;
+
+      // ==========================================
+      // VOZ: RECONOCIMIENTO (ESCUCHAR COMANDOS DESDE MÓVIL)
+      // ==========================================
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      let recognition;
+      if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.lang = "es-ES";
+
+        recognition.onstart = () => {
+          estado.classList.remove("status-panel__message--error");
+          estado.classList.add("status-panel__message--active");
+          estado.innerText = "Sincronizado. Micrófono encendido y escuchando...";
+        };
+
+        recognition.onerror = (event) => {
+          estado.classList.remove("status-panel__message--active");
+          estado.classList.add("status-panel__message--error");
+          estado.innerText = "Error micrófono: " + event.error;
+          if (event.error === "not-allowed") {
+              estado.innerText += " (Permiso denegado o necesitas HTTPS)";
+          }
+        };
+
+        recognition.onresult = (event) => {
+          const comando = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
+          estado.classList.remove("status-panel__message--error");
+          estado.classList.add("status-panel__message--active");
+          estado.innerText = "Escuchado: " + comando;
+          
+          // Mandar el comando al servidor
+          socket.emit("comando_voz", comando);
+        };
+        
+        // Reiniciar automáticamente si se detiene (algunos móviles lo paran tras un rato)
+        recognition.onend = () => {
+          if (activo) {
+             try { recognition.start(); } catch(e) {}
+          }
+        };
+      } else {
+        setTimeout(() => {
+          estado.classList.add("status-panel__message--error");
+          estado.innerText = "⚠️ Tu navegador en el móvil no soporta reconocimiento de voz, o necesitas acceder mediante HTTPS en lugar de HTTP.";
+        }, 1000);
+      }
+
+      // Al pulsar el botón, desbloqueamos el audio del navegador móvil
+      boton.addEventListener("click", () => {
+        activo = true;
+        boton.classList.add("btn-connect--hidden");
+        icono.classList.add("headset-icon--visible");
+        
+        estado.classList.add("status-panel__message--highlight");
+        panelEstado.classList.add("status-panel--active");
+        estado.innerText = "Iniciando micrófono...";
+
+        if (recognition) {
+          try {
+            recognition.start();
+          } catch (e) {
+            estado.classList.remove("status-panel__message--highlight");
+            estado.classList.add("status-panel__message--error");
+            panelEstado.classList.add("status-panel--alert");
+            estado.innerText = "Error al arrancar micrófono: " + e.message;
+          }
+        }
+
+        const msg = new SpeechSynthesisUtterance("Bienvenido al IA COACH, ¿estás listo para entrenar? Ponte en forma de T para calibrar tu cuerpo, selecciona la disciplina a entrenar, di iniciar, y vamos con ello!");
+        msg.lang = "es-ES";
+        window.speechSynthesis.speak(msg);
+      });
+
+      // Escuchamos los mensajes que manda el ordenador
+      socket.on("feedback", (data) => {
+        if (activo) {
+          // Reproducimos la instrucción.
+          const msg = new SpeechSynthesisUtterance(data.mensaje);
+          msg.lang = "es-ES";
+          window.speechSynthesis.speak(msg);
+
+          // Actualizamos visualmente el móvil
+          panelEstado.classList.remove("status-panel--active");
+          panelEstado.classList.add("status-panel--alert");
+          
+          estado.classList.remove("status-panel__message--active", "status-panel__message--highlight");
+          estado.classList.add("status-panel__message--error");
+          estado.innerText = "Última instrucción: " + data.mensaje;
+
+          // Volvemos el color a la normalidad si nos felicita (o si es un comando neutral)
+          if (data.mensaje === "¡Ahora mucho mejor!" || data.mensaje.includes("Modo") || data.mensaje.includes("Entrenamiento")) {
+            panelEstado.classList.remove("status-panel--alert");
+            panelEstado.classList.add("status-panel--active");
+            
+            estado.classList.remove("status-panel__message--error");
+            estado.classList.add("status-panel__message--highlight");
+          }
+        }
+      });
+    </script>
+  </body>
+</html>
