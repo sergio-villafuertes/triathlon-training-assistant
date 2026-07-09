@@ -112,6 +112,7 @@ npm run tunnel
 ```
 
 Once the server is running, open your browser and access the application through the generated local address.
+
 The project can be accessed from both desktop and mobile devices connected to the same local network.
 
 > **Note**
