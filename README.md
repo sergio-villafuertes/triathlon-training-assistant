@@ -9,7 +9,6 @@ This project was developed as part of a university team project at Universidad C
 ## 🚀 Features
 
 - Interactive training interface
-- Sports facility locator with an interactive map
 - Real-time communication using Socket.IO
 - Responsive user interface
 - Training mode for different triathlon disciplines
