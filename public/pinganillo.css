@@ -2,10 +2,29 @@
 :root {
   --bg-color: #0d1117;
   --panel-bg: rgba(22, 27, 34, 0.85);
-  --accent-cyan: #00e5ff;
-  --accent-orange: #ff4d00;
+  --accent-cyan: #a855f7;
+  /* Morado - color base UI */
+  --accent-yellow: #ffea00;
   --text-main: #ffffff;
   --text-muted: #8b949e;
+  --accent-sport: #a855f7;
+  /* Color del deporte activo */
+}
+
+/* Temáticas Dinámicas P2 - Solo el deporte activo cambia de color */
+body.tema-correr {
+  --accent-sport: #ff3333;
+  /* Rojo Running */
+}
+
+body.tema-nadar {
+  --accent-sport: #00aaff;
+  /* Azul Swimming */
+}
+
+body.tema-bici {
+  --accent-sport: #00ff66;
+  /* Verde Biking */
 }
 
 /* RESETEOS Y BASE */
@@ -23,37 +42,39 @@
   flex-direction: column;
   align-items: center;
   min-height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   background-image: radial-gradient(circle at 50% 0%, #1a2332 0%, #0d1117 70%);
-  padding: 20px;
+  padding: 14px 20px;
 }
 
 /* HEADER Y TITULOS */
 .app-header {
   width: 100%;
-  padding: 20px 0;
+  padding: 10px 0;
   text-align: center;
-  border-bottom: 2px solid rgba(0, 229, 255, 0.2);
-  margin-bottom: 40px;
+  border-bottom: 1px solid rgba(168, 85, 247, 0.2);
+  margin-bottom: 14px;
 }
 
 .app-title {
   font-weight: 900;
   font-style: italic;
-  font-size: 1.8rem;
+  font-size: 2rem;
   letter-spacing: 1px;
   text-transform: uppercase;
 }
 
 .app-title__highlight {
-  color: var(--accent-orange);
+  color: var(--accent-sport);
 }
 
 /* COMPONENTE: BOTÓN */
 .btn-connect {
   background: transparent;
-  border: 3px solid var(--accent-cyan);
+  border: 2px solid var(--accent-cyan);
   color: var(--accent-cyan);
-  padding: 20px 40px;
+  padding: 20px 48px;
   font-size: 1.2rem;
   font-weight: 900;
   font-family: "Montserrat", sans-serif;
@@ -61,16 +82,16 @@
   letter-spacing: 2px;
   border-radius: 50px;
   cursor: pointer;
-  box-shadow: 0 0 20px rgba(0, 229, 255, 0.4),
-    inset 0 0 10px rgba(0, 229, 255, 0.4);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.4),
+    inset 0 0 10px rgba(168, 85, 247, 0.3);
   transition: all 0.3s ease;
-  margin-bottom: 30px;
+  margin-bottom: 17px;
 }
 
 .btn-connect:active {
   background: var(--accent-cyan);
   color: var(--bg-color);
-  box-shadow: 0 0 40px rgba(0, 229, 255, 0.8);
+  box-shadow: 0 0 40px rgba(168, 85, 247, 0.8);
 }
 
 .btn-connect--hidden {
@@ -81,7 +102,8 @@
 .headset-icon {
   font-size: 4rem;
   margin-bottom: 20px;
-  display: none; /* Oculto por defecto */
+  display: none;
+  /* Oculto por defecto */
 }
 
 .headset-icon--visible {
@@ -94,10 +116,10 @@
   max-width: 400px;
   background: var(--panel-bg);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 20px;
+  border-radius: 10px;
+  padding: 14px 20px;
   text-align: center;
-  border-left: 4px solid var(--text-muted); /* Color nativo inactivo */
+  border-left: 3px solid var(--text-muted);
   transition: border-color 0.3s ease;
 }
 
@@ -106,21 +128,21 @@
 }
 
 .status-panel--alert {
-  border-left-color: var(--accent-orange);
+  border-left-color: var(--accent-yellow);
 }
 
 .status-panel__label {
   display: block;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 1px;
-  margin-bottom: 10px;
+  margin-bottom: 7px;
   font-weight: 700;
 }
 
 .status-panel__message {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--text-muted);
   transition: color 0.3s ease;
@@ -135,5 +157,248 @@
 }
 
 .status-panel__message--error {
-  color: var(--accent-orange);
+  color: var(--accent-yellow);
+}
+
+.btn-mapa {
+  margin-top: 14px;
+  padding: 14px 22px;
+  border: none;
+  border-radius: 12px;
+
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+
+  color: var(--accent-cyan);
+  background: rgba(168, 85, 247, 0.08);
+
+  border: 2px solid rgba(168, 85, 247, 0.4);
+
+  cursor: pointer;
+  transition: all 0.25s ease;
+
+  backdrop-filter: blur(6px);
+}
+
+/* HOVER */
+.btn-mapa:hover {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 10px var(--accent-cyan), 0 0 20px rgba(168, 85, 247, 0.3);
+  transform: translateY(-2px);
+}
+
+/* CLICK */
+.btn-mapa:active {
+  transform: scale(0.97);
+}
+
+/* CENTRAR */
+.btn-mapa {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(168, 85, 247, 0.05));
+}
+
+/* =========================================
+   NUEVO: MENÚ SELECCIÓN DE DEPORTES
+   ========================================= */
+#menu-deportes {
+  width: 100%;
+  max-width: 400px;
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  display: none;
+}
+
+#menu-deportes.visible {
+  display: flex;
+}
+
+.tarjeta-deporte {
+  background: var(--panel-bg);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 20px 22px;
+  text-align: center;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.tarjeta-deporte:hover,
+.tarjeta-deporte:active {
+  background: rgba(168, 85, 247, 0.1);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
+  transform: translateY(-2px);
+}
+
+.btn-secundario {
+  background: rgba(168, 85, 247, 0.07);
+  border: 1.5px solid rgba(168, 85, 247, 0.4);
+  color: var(--accent-cyan);
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: all 0.25s ease;
+  letter-spacing: 0.5px;
+  backdrop-filter: blur(4px);
+  text-align: center;
+}
+
+.btn-secundario:hover,
+.btn-secundario:active {
+  background: rgba(168, 85, 247, 0.18);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Botón de Pausar: borde neutro */
+.btn-pausa {
+  border-color: rgba(255, 255, 255, 0.4);
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.btn-pausa:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: white;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+/* Botón de Terminar: blanco/neutro (el rojo es solo para tema-correr) */
+.btn-terminar {
+  border-color: rgba(255, 255, 255, 0.4);
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.btn-terminar:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: white;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+/* Botón Saltar Calibración: blanco/neutro (el naranja es solo para alertas del sistema) */
+.btn-saltar {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: var(--text-main);
+}
+
+.btn-saltar:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: white;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+/* =========================================
+   NUEVO: MODALES (MANUAL Y CRITERIOS)
+   ========================================= */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Oculatar/Mostrar */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.modal-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-content {
+  background: #161b22;
+  border: 2px solid var(--accent-cyan);
+  width: 90%;
+  max-width: 450px;
+  max-height: 85vh;
+  overflow-y: auto;
+  border-radius: 12px;
+  padding: 25px;
+  color: var(--text-main);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  box-shadow: 0 0 30px rgba(168, 85, 247, 0.2);
+}
+
+.modal-content h2 {
+  color: var(--accent-cyan);
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.modal-content h3 {
+  color: var(--text-main);
+  /* Blanco - los h3 no son temáticos de deporte */
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+.modal-content ul {
+  padding-left: 20px;
+  margin-bottom: 15px;
+}
+
+.modal-content li {
+  margin-bottom: 8px;
+}
+
+.btn-cerrar-modal {
+  display: block;
+  width: 100%;
+  background: var(--accent-cyan);
+  color: #000;
+  border: none;
+  padding: 15px;
+  font-weight: 900;
+  border-radius: 8px;
+  margin-top: 20px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+/* FOOTER MARQUEE */
+.app-footer {
+  width: 100%;
+  padding: 10px 0 5px 0;
+  margin-top: auto;
+  border-top: 1px solid rgba(168, 85, 247, 0.2);
+  overflow: hidden;
+}
+
+.app-footer marquee {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
 }

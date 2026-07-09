@@ -11,6 +11,10 @@ const modoDiv = document.getElementById("modo-deporte");
 const loadingOverlay = document.getElementById("loading-overlay");
 
 // NUEVOS ELEMENTOS P2
+const relojDiv = document.getElementById("reloj-digital");
+const kcalDiv = document.getElementById("kcal-counter");
+const aiLogDiv = document.getElementById("ai-log");
+
 const cronoDiv = document.getElementById("crono");
 const contadorErroresDiv = document.getElementById("contador-errores");
 const overlayResumen = document.getElementById("overlay-resumen");
@@ -26,11 +30,11 @@ const CONFIG_IA = {
   natacion: { maxCuello: 140, maxPierna: 150, maxCodoYOffset: 0.1 },
   correr: { minEspalda: 150, minCuello: 150, maxRodillaYOffset: 0.05 },
   timeoutSinUsuario: 3000,
-  cooldownGesto: 1500 // 1.5s entre gestos para evitar spam
+  cooldownGesto: 1500
 };
 
-// MAQUINA DE ESTADOS: CALIBRACION -> SELECCION -> ACTIVO / PAUSA -> RESUMEN
-let estadoSistema = "CALIBRACION";
+// MAQUINA DE ESTADOS: ESPERANDO -> CALIBRACION -> ACTIVO / PAUSA -> RESUMEN
+let estadoSistema = "ESPERANDO";
 let deportesDisponibles = ["bici", "natacion", "correr"];
 let indiceDeporte = 0;
 let deporteActual = deportesDisponibles[0]; 
@@ -41,6 +45,7 @@ let cronoActivo = false;
 
 let tiempoTpose = 0;
 let ultimoTiempoGesto = 0;
+let progresoGesto = 0;
 
 let ultimoAviso = 0;
 const TIEMPO_ESPERA = 4000;
@@ -50,11 +55,19 @@ let errorDetectadoInterno = "Correcto";
 
 let tiempoDesaparicion = 0;
 let usuarioAusente = false;
-let colorEsqueleto = "#00e5ff"; // default cyan
+let colorEsqueleto = "#00e5ff"; 
 
 // ==========================================
-// FORMATEAR TIEMPO
+// 1. RELOJ Y CRONÓMETRO
 // ==========================================
+// Reloj del Header
+setInterval(() => {
+  const ahora = new Date();
+  if (relojDiv) {
+    relojDiv.innerText = ahora.toLocaleTimeString('es-ES', { hour12: false });
+  }
+}, 1000);
+
 function formatearTiempo(segundos) {
   const m = Math.floor(segundos / 60).toString().padStart(2, "0");
   const s = (segundos % 60).toString().padStart(2, "0");
@@ -65,44 +78,81 @@ function formatearTiempo(segundos) {
 setInterval(() => {
   if (cronoActivo && estadoSistema === "ACTIVO" && !usuarioAusente) {
     tiempoEntrenamiento++;
-    cronoDiv.innerText = formatearTiempo(tiempoEntrenamiento);
+    if(cronoDiv) cronoDiv.innerText = formatearTiempo(tiempoEntrenamiento);
+    
+    // Cada segundo quema unas 0.15 kcal para efecto visual
+    if(kcalDiv) kcalDiv.innerText = (tiempoEntrenamiento * 0.15).toFixed(1);
   }
 }, 1000);
 
 // ==========================================
-// 1. VOZ: ÚNICA FORMA DE SALIDA Y RESPALDO
+// 2. VOZ / COMANDOS DESDE EL MÓVIL Y LOGS
 // ==========================================
 function hablar(texto) {
   socket.emit("hablar_movil", texto);
+  
+  if (aiLogDiv) {
+     const p = document.createElement("p");
+     p.innerHTML = `<i>[IA]</i> ${texto}`;
+     aiLogDiv.appendChild(p);
+     // Auto Scroll 
+     aiLogDiv.scrollTop = aiLogDiv.scrollHeight;
+  }
+}
+
+function arrancarDesdeEspera(modo) {
+    tiempoEntrenamiento = 0;
+    erroresTotales = 0;
+    if (cronoDiv) cronoDiv.innerText = "00:00";
+    if (contadorErroresDiv) contadorErroresDiv.innerText = "Errores: 0";
+
+    document.getElementById("contenedor-video").classList.remove("difuminado");
+    document.getElementById("dashboard").classList.remove("difuminado");
+    document.getElementById("panel-derecho").classList.remove("difuminado");
+    document.getElementById("overlay-esperando").classList.add("oculto");
+    document.getElementById("overlay-resumen").classList.add("oculto");
+    
+    forceDeporte(modo);
+    cambiarEstado("CALIBRACION");
 }
 
 socket.on("comando_ordenador", (comando) => {
   console.log("🎤 Comando recibido del móvil:", comando);
 
-  if (comando.includes("iniciar")) {
-    if (estadoSistema === "SELECCION" || estadoSistema === "PAUSA") {
-      cambiarEstado("ACTIVO");
-    }
-  } else if (comando.includes("pausar")) {
-    if (estadoSistema === "ACTIVO") cambiarEstado("PAUSA");
-  } else if (comando.includes("terminar")) {
-    if (estadoSistema !== "CALIBRACION" && estadoSistema !== "RESUMEN") {
-        cambiarEstado("RESUMEN");
-    }
-  } else if (estadoSistema !== "RESUMEN") {
-    // CAMBIO DE DEPORTE POR VOZ (Funciona en CALIBRACION para testear micro)
-    if (comando.includes("bicicleta") || comando.includes("bici")) forceDeporte("bici");
-    else if (comando.includes("natación") || comando.includes("nadar") || comando.includes("natacion")) forceDeporte("natacion");
-    else if (comando.includes("correr") || comando.includes("cinta")) forceDeporte("correr");
+  if (estadoSistema === "ESPERANDO" || estadoSistema === "RESUMEN") {
+     if (comando.includes("iniciar bicicleta") || comando.includes("bicicleta") || comando.includes("bici")) {
+         arrancarDesdeEspera("bici");
+     } else if (comando.includes("iniciar natacion") || comando.includes("nadar") || comando.includes("natación") || comando.includes("natacion")) {
+         arrancarDesdeEspera("natacion");
+     } else if (comando.includes("iniciar correr") || comando.includes("cinta") || comando.includes("correr")) {
+         arrancarDesdeEspera("correr");
+     }
+  } else {
+      // SOLO SE ACEPTAN COMANDOS DE FLUJO (Pausar/Reanudar/Terminar), EL DEPORTE ESTÁ BLOQUEADO
+      if (comando === "saltar_calibracion") {
+        if (estadoSistema === "CALIBRACION") {
+           hablar("Calibración omitida.");
+           iniciarCuentaAtras();
+        }
+      } else if (comando.includes("iniciar") || comando.includes("reanudar") || comando.includes("reanuda") || comando.includes("continuar") || comando.includes("play")) {
+        if (estadoSistema === "PAUSA") iniciarCuentaAtras();
+      } else if (comando === "alternar_pausa") {
+        if (estadoSistema === "ACTIVO") cambiarEstado("PAUSA");
+        else if (estadoSistema === "PAUSA") iniciarCuentaAtras();
+      } else if (comando.includes("pausa") || comando.includes("parar") || comando.includes("stop")) {
+        if (estadoSistema === "ACTIVO") cambiarEstado("PAUSA");
+      } else if (comando.includes("terminar") || comando.includes("termina") || comando.includes("fin")) {
+        if (estadoSistema !== "RESUMEN" && estadoSistema !== "ESPERANDO") {
+            cambiarEstado("RESUMEN");
+        }
+      }
   }
 });
 
 // ==========================================
-// 2. FUNCIÓN DE CAMBIO DE ESTADO (MÁQUINA LOGICA)
+// 2. FUNCIÓN DE CAMBIO DE ESTADO 
 // ==========================================
 function forceDeporte(nuevoDeporte) {
-  // Bloquear bucles de eco. Evita que el micrófono escuche al propio altavoz 
-  // diciendo "natación" y vuelva a activarlo en un bucle infinito.
   if (deporteActual === nuevoDeporte && modoDiv.innerText !== "?") return;
 
   deporteActual = nuevoDeporte;
@@ -110,22 +160,58 @@ function forceDeporte(nuevoDeporte) {
   modoDiv.innerText = nuevoDeporte.toUpperCase();
   modoDiv.style.color = "var(--accent-cyan)";
   
-  // Añadimos tildes a la fuerza para que el motor de habla de Google lo lea natural
+  // Limpiar temas y aplicar el nuevo
+  document.body.classList.remove("tema-bici", "tema-nadar", "tema-natacion", "tema-correr");
+  const claseTema = nuevoDeporte === "natacion" ? "nadar" : nuevoDeporte;
+  document.body.classList.add(`tema-${claseTema}`);
+
   let nombreLocutor = nuevoDeporte === "natacion" ? "natación" : nuevoDeporte;
   hablar(`Modo ${nombreLocutor} seleccionado.`);
+}
+
+let intervalCuenta = null;
+function iniciarCuentaAtras() {
+    estadoSistema = "CUENTA_ATRAS";
+    estadoDiv.innerText = "CUENTA ATRÁS";
+    cronoActivo = false;
+    colorEsqueleto = "white";
+    
+    const overlay = document.getElementById("overlay-cuenta");
+    const numSpan = document.getElementById("numero-cuenta");
+    if(!overlay) { cambiarEstado("ACTIVO"); return; }
+    
+    overlay.style.display = "flex";
+    let tiempo = 5;
+    numSpan.innerText = tiempo;
+    
+    if (intervalCuenta) clearInterval(intervalCuenta);
+    hablar(tiempo.toString());
+    
+    intervalCuenta = setInterval(() => {
+        tiempo--;
+        if (tiempo > 0) {
+            numSpan.innerText = tiempo;
+            hablar(tiempo.toString());
+        } else {
+            clearInterval(intervalCuenta);
+            intervalCuenta = null;
+            overlay.style.display = "none";
+            cambiarEstado("ACTIVO");
+        }
+    }, 1000);
 }
 
 function cambiarEstado(nuevoEstado) {
   estadoSistema = nuevoEstado;
   estadoDiv.innerText = nuevoEstado;
   
-  if (nuevoEstado === "SELECCION") {
-    mensajeDiv.innerText = "Levanta MANO IZQUIERDA para ciclar deporte. MANO DERECHA arranca.";
+  if (nuevoEstado === "CALIBRACION") {
+    // Al elegirse de antemano el deporte, la calibración ya no lleva a SELECCION, pasa directo a ACTIVO
+    mensajeDiv.innerText = "Deporte fijado. Sitúate en T-Pose para calibrar y empezar directo...";
     mensajeDiv.style.color = "var(--text-main)";
     cronoActivo = false;
     cronoDiv.classList.remove("crono-activo");
     modoDiv.innerText = deporteActual.toUpperCase();
-    hablar("Calibración completada. Selecciona deporte.");
     
   } else if (nuevoEstado === "ACTIVO") {
     cronoActivo = true;
@@ -137,7 +223,7 @@ function cambiarEstado(nuevoEstado) {
     cronoActivo = false;
     cronoDiv.classList.remove("crono-activo");
     colorEsqueleto = "var(--text-muted)";
-    mensajeDiv.innerText = "Entrenamiento pausado. (Ambas manos arriba para retomar)";
+    mensajeDiv.innerText = "Entrenamiento pausado.";
     mensajeDiv.style.color = "var(--text-main)";
     hablar("Entrenamiento pausado.");
     
@@ -146,7 +232,6 @@ function cambiarEstado(nuevoEstado) {
     cronoDiv.classList.remove("crono-activo");
     colorEsqueleto = "var(--text-muted)";
     
-    // Rellenamos el Overlay P2
     resumenDeporte.innerText = deporteActual.toUpperCase();
     resumenTiempo.innerText = formatearTiempo(tiempoEntrenamiento);
     resumenErrores.innerText = erroresTotales.toString();
@@ -154,13 +239,16 @@ function cambiarEstado(nuevoEstado) {
     overlayResumen.classList.remove("oculto");
     hablar("Entrenamiento terminado. Pantalla de resumen activada.");
     
-    // Auto reset en 10 segs volviendo a la Fase 1
-    setTimeout(() => {
-      overlayResumen.classList.add("oculto");
-      reiniciarApp();
-    }, 10000);
+    // SIN LIMITE AUTOMATICO: Ahora esperamos al evento manual del Móvil para resetear
+    socket.emit("deporte_completado", deporteActual); // Avisamos al móvil de que se tache
   }
 }
+
+// ESCUCHA DEL BOTÓN MANUAL DE RETORNO AL MENÚ
+socket.on("reset_manual", () => {
+    overlayResumen.classList.add("oculto");
+    reiniciarApp();
+});
 
 function reiniciarApp() {
   tiempoEntrenamiento = 0;
@@ -169,13 +257,23 @@ function reiniciarApp() {
   ultimoTiempoGesto = 0;
   cronoDiv.innerText = "00:00";
   contadorErroresDiv.innerText = "Errores: 0";
-  cambiarEstado("CALIBRACION");
-  mensajeDiv.innerText = "Sitúate en T-Pose frente a la cámara...";
-  modoDiv.innerText = "?";
+  
+  // VOLVER A PANTALLA DE INCIO
+  estadoSistema = "ESPERANDO";
+  estadoDiv.innerText = "ESPERANDO";
+  document.getElementById("contenedor-video").classList.add("difuminado");
+  document.getElementById("dashboard").classList.add("difuminado");
+  document.getElementById("overlay-esperando").classList.remove("oculto");
+  
+  // Restaurar el tema por Defecto
+  document.body.classList.remove("tema-bici", "tema-nadar", "tema-correr");
+  
+  mensajeDiv.innerText = "Sistema inactivo.";
+  modoDiv.innerText = "ESPERANDO";
 }
 
 // ==========================================
-// 3. MATEMÁTICAS GEOMÉTRICAS Y GESTOS MEDIAPIPE
+// 3. MATEMÁTICAS GEOMÉTRICAS Y GESTOS
 // ==========================================
 function calcularAngulo(p1, p2, p3) {
   const radianes = Math.atan2(p3.y - p2.y, p3.x - p2.x) - Math.atan2(p1.y - p2.y, p1.x - p2.x);
@@ -185,52 +283,31 @@ function calcularAngulo(p1, p2, p3) {
 
 function analizarGestos(landmarks) {
     const ahora = Date.now();
-    if (ahora - ultimoTiempoGesto < CONFIG_IA.cooldownGesto) return; // Cooldown anti spam
+    progresoGesto = 0;
+    if (ahora - ultimoTiempoGesto < CONFIG_IA.cooldownGesto) return;
 
     const hombroI = landmarks[11];
     const hombroD = landmarks[12];
     const muñecaI = landmarks[15]; 
     const muñecaD = landmarks[16];
 
-    // DEFINICIÓN DE GESTOS SIMPLES Y ROBUSTOS (Eje Y: 0 top a 1 bottom)
-    const manoIzquierdaArriba = muñecaI.y < hombroI.y - 0.2;
-    const manoDerechaArriba = muñecaD.y < hombroD.y - 0.2;
-    // T-POSE: Brazos alineados horizontalmente con los hombros y extendidos
-    const tPose = Math.abs(muñecaI.y - hombroI.y) < 0.2 && Math.abs(muñecaD.y - hombroD.y) < 0.2 && Math.abs(muñecaI.x - muñecaD.x) > 0.4;
+    const tPose = Math.abs(muñecaI.y - hombroI.y) < 0.15 && Math.abs(muñecaD.y - hombroD.y) < 0.15 && Math.abs(muñecaI.x - muñecaD.x) > 0.45;
 
-    // ESTADOS:
+    let algunGestoDetec = false;
+
     if (estadoSistema === "CALIBRACION") {
        if (tPose) {
+          algunGestoDetec = true;
           if (tiempoTpose === 0) tiempoTpose = ahora;
-          else if (ahora - tiempoTpose > 2000) { // 2 segundos manteniendo T-Pose
-             cambiarEstado("SELECCION");
+          progresoGesto = Math.min((ahora - tiempoTpose) / 2000, 1);
+          if (ahora - tiempoTpose >= 2000) { 
+             iniciarCuentaAtras();
+             ultimoTiempoGesto = ahora;
+             tiempoTpose = 0;
+             progresoGesto = 0;
           }
        } else {
           tiempoTpose = 0;
-       }
-    } 
-    else if (estadoSistema === "SELECCION") {
-       if (manoIzquierdaArriba && !manoDerechaArriba) {
-          // Cambiar Deporte (Gestual)
-          indiceDeporte = (indiceDeporte + 1) % deportesDisponibles.length;
-          forceDeporte(deportesDisponibles[indiceDeporte]);
-          ultimoTiempoGesto = ahora;
-       } else if (manoDerechaArriba && !manoIzquierdaArriba) {
-          // Iniciar Entreno (Gestual)
-          cambiarEstado("ACTIVO");
-          ultimoTiempoGesto = ahora;
-       }
-    }
-    else if (estadoSistema === "ACTIVO" || estadoSistema === "PAUSA") {
-       if (manoIzquierdaArriba && manoDerechaArriba) {
-          // Gesto de Seguridad Bimanual: Pausar / Reanudar sin decir palabra
-          if (estadoSistema === "ACTIVO") {
-              socket.emit("error_detectado", "Pausa gestual de seguridad iniciada");
-              cambiarEstado("PAUSA");
-          } else {
-              cambiarEstado("ACTIVO");
-          }
-          ultimoTiempoGesto = ahora;
        }
     }
 }
@@ -299,7 +376,6 @@ pose.onResults((results) => {
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
   canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
-  // DETECCIÓN GLOBAL DE GESTOS Y ABANDONOS
   if (hayCuerpo) {
       analizarGestos(results.poseLandmarks);
       
@@ -319,7 +395,7 @@ pose.onResults((results) => {
             usuarioAusente = true;
             if (estadoSistema === "ACTIVO") {
               mensajeDiv.innerText = "Usuario no detectado. Pausa automática.";
-              mensajeDiv.style.color = "var(--accent-orange)";
+              mensajeDiv.style.color = "var(--accent-yellow)";
               colorEsqueleto = "var(--text-muted)";
               socket.emit("error_detectado", "Usuario perdido de la cámara");
             }
@@ -327,42 +403,46 @@ pose.onResults((results) => {
       }
   }
 
-  // PINTAR EL ESQUELETO Y DAR CROMATISMO DE FEEDBACK
   if (hayCuerpo && typeof drawConnectors !== "undefined" && estadoSistema !== "RESUMEN") {
-    if (estadoSistema === "CALIBRACION" && tiempoTpose > 0) colorEsqueleto = "white"; // Feedback de que está cogiendo la T-Pose
+    if (estadoSistema === "CALIBRACION" && tiempoTpose > 0) colorEsqueleto = "white";
     else if (estadoSistema === "CALIBRACION") colorEsqueleto = "gray";
 
+    let animRadius = 3;
+    if (progresoGesto > 0) {
+        animRadius = 3 + (progresoGesto * 15); // Crece de 3 hasta 18
+        colorEsqueleto = "#ff00ff"; // Rosa/Morado de carga
+    }
+
     drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, { color: "#FFFFFF", lineWidth: 4 });
-    drawLandmarks(canvasCtx, results.poseLandmarks, { color: colorEsqueleto, lineWidth: 2, radius: 3 });
+    drawLandmarks(canvasCtx, results.poseLandmarks, { color: colorEsqueleto, lineWidth: 2, radius: animRadius });
   }
 
-  // IA MATEMÁTICA DE POSTURA EN TIEMPO REAL
   if (estadoSistema === "ACTIVO" && hayCuerpo && !usuarioAusente) {
     const resultadoBruto = detectarError(results.poseLandmarks);
 
     if (resultadoBruto !== "Correcto") {
-      colorEsqueleto = "#ff4d00"; // ESTADO DE ERROR (Rojo/Naranja)
+      colorEsqueleto = "#ffea00"; 
 
       if (errorDetectadoInterno !== resultadoBruto) {
         errorDetectadoInterno = resultadoBruto;
         tiempoInicioError = ahora;
-      } else if (ahora - tiempoInicioError > 1000) { // Tolerancia para que no flashee a la mínima
+      } else if (ahora - tiempoInicioError > 1000) {
         mensajeDiv.innerText = errorDetectadoInterno;
-        mensajeDiv.style.color = "var(--accent-orange)";
+        mensajeDiv.style.color = "var(--accent-yellow)";
 
         if (ahora - ultimoAviso > TIEMPO_ESPERA) {
           socket.emit("error_detectado", errorDetectadoInterno);
           ultimoAviso = ahora;
           
           if (!errorAnunciado) {
-             erroresTotales++; // ESTADISTICA P2
+             erroresTotales++;
              contadorErroresDiv.innerText = `Errores: ${erroresTotales}`;
           }
           errorAnunciado = true;
         }
       }
     } else {
-      colorEsqueleto = "#00e5ff"; // IDEAL (Cian)
+      colorEsqueleto = "#00e5ff"; 
       errorDetectadoInterno = "Correcto";
       tiempoInicioError = 0;
       mensajeDiv.innerText = "Postura Correcta";
@@ -378,26 +458,23 @@ pose.onResults((results) => {
 });
 
 // ==========================================
-// 6. CONTROL Y ARRANQUE DE CÁMARA BÁSICA
+// 6. CONTROL Y REPRODUCCIÓN DEL VÍDEO REMOTO
 // ==========================================
-const camera = new Camera(videoElement, {
-  onFrame: async () => {
-    await pose.send({ image: videoElement });
-  },
-  width: 800,
-  height: 600,
-});
-
-camera.start().catch((err) => {
-  if (loadingOverlay) {
-    loadingOverlay.classList.remove("oculto");
-    loadingOverlay.innerHTML = `
-      <div style="text-align: center; color: var(--accent-orange); padding: 20px; border: 2px solid var(--accent-orange); border-radius: 8px;">
-        <h3 style="margin-bottom: 15px;">❌ Error de Cámara</h3>
-        <p>No se pudo acceder a la cámara web.</p>
-        <p style="font-size: 0.9rem; margin-top: 5px; color: var(--text-main);">Por favor, aprueba los permisos.</p>
-      </div>
-    `;
-    loadingOverlay.style.background = "rgba(13, 17, 23, 0.95)";
+// NOTA MODO ESPEJO P2: El PC ya no usa la webcam local. Pide las fotos al túnel Wifi.
+videoElement.onload = async () => {
+  // Ocultamos el spinner inicial cuando recibamos la primera foto del móvil
+  if (loadingOverlay && !loadingOverlay.classList.contains("oculto")) {
+    loadingOverlay.classList.add("oculto"); 
   }
+  // Pasamos el fotograma al cerebro MediaPipe
+  try {
+    await pose.send({ image: videoElement });
+  } catch (err) {
+    console.error("Error MediaPipe procesando frame:", err);
+  }
+};
+
+socket.on("stream_espejo", (frameBase64) => {
+  // Inyectamos el fotograma en nuestro <img> fantasma
+  videoElement.src = frameBase64;
 });

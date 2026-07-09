@@ -1,141 +1,696 @@
 <!doctype html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pinganillo Inteligente</title>
 
-    <link
-      href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="pinganillo.css" />
-  </head>
-  <body class="app-body">
-    <header class="app-header">
-      <h1 class="app-title">Audio <span class="app-title__highlight">Receiver</span></h1>
-    </header>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Triatlon AI Coach</title>
 
-    <div id="icono-auricular" class="headset-icon">🎧</div>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="pinganillo.css" />
 
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+</head>
+
+<body class="app-body">
+  <header class="app-header">
+    <h1 class="app-title">Triatlon <span class="app-title__highlight">AI Coach</span></h1>
+  </header>
+
+  <!-- PANEL PRINCIPAL ESTADO SIEMPRE VISIBLE -->
+  <div class="status-panel" id="panel-estado">
+    <span class="status-panel__label">Estado de Conexión</span>
+    <p class="status-panel__message" id="estado">Sistema inactivo. Esperando conexión del usuario...</p>
+  </div>
+
+  <!-- VISTA PRE-ELECCION (MENÚS Y MAPAS) -->
+  <div id="vista-pre" style="width:100%; display:flex; flex-direction:column; align-items:center;">
     <button id="btn-activar" class="btn-connect">CONECTAR SISTEMA</button>
 
-    <div class="status-panel" id="panel-estado">
-      <span class="status-panel__label">Estado de Conexión</span>
-      <p class="status-panel__message" id="estado">Sistema inactivo. Esperando conexión del usuario...</p>
+    <div id="menu-deportes"
+      style="display:none; width:100%; max-width:400px; gap:10px; flex-direction:column; margin-top:14px;">
+      <div class="tarjeta-deporte" id="tarjeta-bici" onclick="seleccionarDeporte('bici')">🚴‍♂️ Bicicleta</div>
+      <div class="tarjeta-deporte" id="tarjeta-natacion" onclick="seleccionarDeporte('natacion')">🏊‍♂️ Natación</div>
+      <div class="tarjeta-deporte" id="tarjeta-correr" onclick="seleccionarDeporte('correr')">🏃‍♂️ Correr</div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
+    <div id="mapa-wrapper" style="display:none; position:relative; width:100%; max-width:400px; margin-top:14px;">
+      <button onclick="cerrarMapa()" style="position:absolute; top:-10px; right:-10px; z-index:1000; background:var(--accent-cyan); color:#000; border:none; border-radius:50%; width:30px; height:30px; font-weight:bold; cursor:pointer; font-size:1.2rem; box-shadow:0 0 10px var(--accent-cyan);">✕</button>
+      <div id="mapa-container" style="width:100%; height:200px; border-radius:12px; overflow:hidden; border:2px solid var(--accent-cyan);"></div>
+    </div>
+    <button class="btn-mapa" id="btn-mapa-toggle" style="display:none; margin-top:14px;" onclick="mostrarMapa()">
+      📍 Buscar gimnasios cercanos
+    </button>
+  </div>
 
-    <script>
-      const socket = io();
-      const boton = document.getElementById("btn-activar");
-      const estado = document.getElementById("estado");
-      const icono = document.getElementById("icono-auricular");
-      const panelEstado = document.getElementById("panel-estado");
+  <!-- VISTA POST-ELECCION (CARGANDO CAMARA, ENTRENANDO) -->
+  <div id="vista-post" style="display:none; width:100%; max-width:400px; flex-direction:column; align-items:center;">
+    <div class="status-panel" id="panel-camara" style="margin-bottom:14px; width:100%;">
+      <span class="status-panel__label">Cámara → PC</span>
+      <video id="video-mobile" autoplay playsinline
+        style="width: 100%; max-height: 170px; border-radius:8px; border:1.5px solid var(--accent-sport); transform: scaleX(-1); object-fit: contain; background: #000;"></video>
+      <canvas id="canvas-mobile" width="320" height="240" style="display:none;"></canvas>
 
-      let activo = false;
+      <div style="display:flex; gap:10px; margin-top:10px; width:100%;">
+        <button class="btn-secundario btn-saltar" style="flex:1;" id="btn-saltar-calibracion"
+          onclick="saltarCalibracion()">
+          ⏭️ Saltar Calibración
+        </button>
+        <button class="btn-secundario btn-pausa" style="flex:1;" onclick="socket.emit('comando_voz', 'alternar_pausa')">⏸️ / ▶️
+          Pausa/Play</button>
+        <button class="btn-secundario btn-terminar" style="flex:1;" onclick="socket.emit('comando_voz', 'terminar')">⏹️
+          Terminar</button>
+      </div>
+    </div>
+  </div>
 
-      // ==========================================
-      // VOZ: RECONOCIMIENTO (ESCUCHAR COMANDOS DESDE MÓVIL)
-      // ==========================================
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      let recognition;
-      if (SpeechRecognition) {
-        recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.lang = "es-ES";
+  <!-- PANEL DE AYUDAS (COMPARTIDO ENTRE PRE Y POST) -->
+  <div id="panel-ayudas"
+    style="display:none; width:100%; max-width:400px; flex-direction:row; gap:10px; margin-top:10px;">
+    <button class="btn-secundario" style="flex:1;" onclick="abrirModal('modal-manual')">📖 Manual</button>
+    <button class="btn-secundario" style="flex:1;" onclick="abrirModal('modal-correcciones')">⚖️ Correcciones</button>
+  </div>
 
-        recognition.onstart = () => {
-          estado.classList.remove("status-panel__message--error");
-          estado.classList.add("status-panel__message--active");
-          estado.innerText = "Sincronizado. Micrófono encendido y escuchando...";
-        };
+  <!-- BOTÓN VOLVER AL MENÚ (SOLO VISIBLE EN RESUMEN) -->
+  <button id="btn-volver-menu" class="btn-secundario"
+    style="display:none; width:100%; max-width:400px; margin-top:14px; font-size:0.9rem; text-transform:uppercase; border-color:var(--accent-cyan); color:var(--accent-cyan); box-shadow: 0 0 12px rgba(168,85,247,0.25);"
+    onclick="resetearManual()">
+    🔙 Volver al Menú
+  </button>
 
-        recognition.onerror = (event) => {
-          estado.classList.remove("status-panel__message--active");
-          estado.classList.add("status-panel__message--error");
-          estado.innerText = "Error micrófono: " + event.error;
-          if (event.error === "not-allowed") {
-              estado.innerText += " (Permiso denegado o necesitas HTTPS)";
-          }
-        };
+  <!-- MODAL MANUAL -->
+  <div id="modal-manual" class="modal-overlay">
+    <div class="modal-content">
+      <h2>📖 Manual de Uso</h2>
+      <div id="manual-contenido">
+        <!-- PRE: Manual completo (todos los deportes) -->
+        <h3>Feedback Visual (IA)</h3>
+        <p style="margin-bottom:10px; font-size:0.9rem;">Cuando el sistema requiera validar una postura (ej. Calibración en T-POSE), los puntos de tu esqueleto se volverán de color <b>morado</b> y aumentarán de tamaño gradualmente. Mantenla 2 segundos hasta que termine de crecer para aplicar la acción.</p>
+        <h3>Comandos de Voz</h3>
+        <ul>
+          <li><b>"Bicicleta / Correr / Natación":</b> Seleccionar deporte de antemano.</li>
+          <li><b>"Saltar Calibración":</b> Anula la T-POSE obligatoria.</li>
+          <li><b>"Pausar / Reanudar":</b> Detiene o retoma el crono.</li>
+          <li><b>"Terminar":</b> Guarda y muestra resultados.</li>
+        </ul>
+      </div>
+      <button class="btn-cerrar-modal" onclick="cerrarModal('modal-manual')">Entendido</button>
+    </div>
+  </div>
 
-        recognition.onresult = (event) => {
-          const comando = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
-          estado.classList.remove("status-panel__message--error");
-          estado.classList.add("status-panel__message--active");
-          estado.innerText = "Escuchado: " + comando;
-          
-          // Mandar el comando al servidor
-          socket.emit("comando_voz", comando);
-        };
-        
-        // Reiniciar automáticamente si se detiene (algunos móviles lo paran tras un rato)
-        recognition.onend = () => {
-          if (activo) {
-             try { recognition.start(); } catch(e) {}
-          }
-        };
-      } else {
-        setTimeout(() => {
-          estado.classList.add("status-panel__message--error");
-          estado.innerText = "⚠️ Tu navegador en el móvil no soporta reconocimiento de voz, o necesitas acceder mediante HTTPS en lugar de HTTP.";
-        }, 1000);
+  <!-- MODAL CORRECCIONES -->
+  <div id="modal-correcciones" class="modal-overlay">
+    <div class="modal-content">
+      <h2>⚖️ Criterios de Corrección</h2>
+      <div id="correcciones-contenido">
+        <!-- PRE: Todas las correcciones -->
+        <h3>🚴‍♂️ Bicicleta</h3>
+        <ul>
+          <li>Maneja un ángulo en el torso. Evita encorvar el cuello.</li>
+          <li>No bajes en exceso las rodillas (postura agresiva).</li>
+          <li>Flexiona ligeramente los codos, evita la tensión.</li>
+        </ul>
+        <h3>🏊‍♂️ Natación</h3>
+        <ul>
+          <li>Mantén el cuello recto con la columna.</li>
+          <li>No dejes caer los codos bajo los hombros durante la brazada.</li>
+          <li>Estira completamente las piernas al patalear.</li>
+        </ul>
+        <h3>🏃‍♂️ Correr</h3>
+        <ul>
+          <li>Espalda totalmente recta, evita la inclinación frontal.</li>
+          <li>Controla la alzada de la rodilla (no sobreelevar).</li>
+          <li>Vista al frente para no colapsar la nuca.</li>
+        </ul>
+      </div>
+      <button class="btn-cerrar-modal" onclick="cerrarModal('modal-correcciones')">Entendido</button>
+    </div>
+  </div>
+
+  <!-- MODAL FELICITACIÓN TRIATLÓN -->
+  <div id="modal-felicitacion" class="modal-overlay">
+    <div class="modal-content" style="text-align:center;">
+      <div style="font-size:4rem; margin-bottom:15px;">🏆</div>
+      <h2>¡Triatlón Completado!</h2>
+      <p style="margin-top:15px; font-size:1.1rem; color:var(--text-muted); line-height:1.6;">
+        Entrenamiento finalizado el día de hoy.<br>
+        Disfruta el descanso y <strong>¡Hora de relajarse!</strong>
+      </p>
+      <p style="margin-top:20px; font-size:0.9rem; color:var(--accent-cyan);">
+        Al cerrar este mensaje podrás volver a seleccionar los 3 deportes.
+      </p>
+      <button class="btn-cerrar-modal" onclick="cerrarFelicitacion()">¡Entendido, hasta mañana! 👋</button>
+    </div>
+  </div>
+
+
+  <script src="/socket.io/socket.io.js"></script>
+
+  <script>
+    const socket = io();
+    const boton = document.getElementById("btn-activar");
+    const estado = document.getElementById("estado");
+    const panelEstado = document.getElementById("panel-estado");
+
+    let activo = false;
+    let cameraStreamUnsuscribe = null;
+    let deportesCompletados = 0;
+    let enMedioDeDeporte = false;
+    let pausaVoz = false;
+
+    // Guardar texto original de cada tarjeta para reset limpio
+    const textosOriginalesTarjetas = {};
+    ["bici", "natacion", "correr"].forEach(d => {
+      const t = document.getElementById("tarjeta-" + d);
+      if (t) textosOriginalesTarjetas[d] = t.innerText;
+    });
+
+    // Variables de cámara en scope global para poder reusar el loop
+    const videoMovil = document.getElementById("video-mobile");
+    const canvasMovil = document.getElementById("canvas-mobile");
+    const ctxMovil = canvasMovil.getContext("2d");
+    let enviando = false;
+    const FRAME_INTERVAL = 80;
+    let ultimoEnvio = 0;
+    let currentStream = null; // Referencia al stream activo para poder pararlo
+
+    // Auto-reanuda el vídeo si el navegador lo pausa (iOS, cambio de app, etc.)
+    videoMovil.addEventListener("pause", () => {
+      if (currentStream && activo) videoMovil.play().catch(() => {});
+    });
+    videoMovil.addEventListener("ended", () => {
+      if (currentStream && activo) videoMovil.play().catch(() => {});
+    });
+
+    // Cuando el móvil vuelve a primer plano (desbloqueo de pantalla, vuelta a la pestaña)
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && currentStream && activo) {
+        videoMovil.play().catch(() => {});
+        iniciarLoopCamara(); // Reinicia el loop por si se había detenido
       }
+    });
 
-      // Al pulsar el botón, desbloqueamos el audio del navegador móvil
-      boton.addEventListener("click", () => {
-        activo = true;
-        boton.classList.add("btn-connect--hidden");
-        icono.classList.add("headset-icon--visible");
+    function capturarYEnviar(timestamp) {
+      if (timestamp - ultimoEnvio >= FRAME_INTERVAL) {
+        if (!enviando && videoMovil.readyState === videoMovil.HAVE_ENOUGH_DATA) {
+          if (document.getElementById("vista-pre").style.display === "none") {
+            enviando = true;
+            ctxMovil.drawImage(videoMovil, 0, 0, canvasMovil.width, canvasMovil.height);
+            const frameBase64 = canvasMovil.toDataURL("image/jpeg", 0.4);
+            socket.volatile.emit("stream_movil", frameBase64);
+            enviando = false;
+          }
+        }
+        ultimoEnvio = timestamp;
+      }
+      cameraStreamUnsuscribe = requestAnimationFrame(capturarYEnviar);
+    }
+
+    function iniciarLoopCamara() {
+      if (cameraStreamUnsuscribe) cancelAnimationFrame(cameraStreamUnsuscribe);
+      enviando = false;
+      ultimoEnvio = 0;
+      cameraStreamUnsuscribe = requestAnimationFrame(capturarYEnviar);
+    }
+
+    function pararCamara() {
+      if (cameraStreamUnsuscribe) cancelAnimationFrame(cameraStreamUnsuscribe);
+      cameraStreamUnsuscribe = null;
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+        currentStream = null;
+        videoMovil.srcObject = null;
+      }
+    }
+
+    // ==========================================
+    // VOZ: RECONOCIMIENTO (ESCUCHAR COMANDOS DESDE MÓVIL)
+    // ==========================================
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition;
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.lang = "es-ES";
+
+      recognition.onstart = () => {
+        estado.classList.remove("status-panel__message--error");
+        estado.classList.add("status-panel__message--active");
+        estado.innerText = "Sincronizado. Micrófono encendido y escuchando...";
+      };
+
+      recognition.onerror = (event) => {
+        if (event.error === "aborted") return; // Ignoramos el error si fuimos nosotros parando el micro
+        estado.classList.remove("status-panel__message--active");
+        estado.classList.add("status-panel__message--error");
+        estado.innerText = "Error micrófono: " + event.error;
+        if (event.error === "not-allowed") {
+          estado.innerText += " (Permiso denegado o necesitas HTTPS)";
+        }
+      };
+
+      recognition.onresult = (event) => {
+        const comando = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
         
-        estado.classList.add("status-panel__message--highlight");
-        panelEstado.classList.add("status-panel--active");
-        estado.innerText = "Iniciando micrófono...";
+        // Ignorar ecos del propio celular/TTS para evitar comandos fantasma
+        if (comando.includes("modo") && comando.includes("seleccionado")) return;
+        if (comando.includes("finaliza") || comando.includes("por favor, finaliza")) return;
+        
+        estado.classList.remove("status-panel__message--error");
+        estado.classList.add("status-panel__message--active");
+        estado.innerText = "Escuchado: " + comando;
 
+        if (comando.includes("saltar calibración") || comando.includes("saltar calibracion") || comando.includes("omitir calibración") || comando.includes("omitir calibracion")) {
+          saltarCalibracion();
+        } else if (comando.includes("bicicleta") || comando.includes("bici")) {
+          if (enMedioDeDeporte) { rechazarCambioDeporte(); }
+          else if (deportesCompletados < 3) { resetearManual(); setTimeout(() => seleccionarDeporte("bici"), 100); }
+        } else if (comando.includes("natacion") || comando.includes("natación") || comando.includes("nadar")) {
+          if (enMedioDeDeporte) { rechazarCambioDeporte(); }
+          else if (deportesCompletados < 3) { resetearManual(); setTimeout(() => seleccionarDeporte("natacion"), 100); }
+        } else if (comando.includes("correr") || comando.includes("cinta")) {
+          if (enMedioDeDeporte) { rechazarCambioDeporte(); }
+          else if (deportesCompletados < 3) { resetearManual(); setTimeout(() => seleccionarDeporte("correr"), 100); }
+        } else if (comando.includes("volver") || comando.includes("menú") || comando.includes("menu")) {
+          if (enMedioDeDeporte) { rechazarCambioDeporte(); }
+          else { resetearManual(); }
+        } else {
+          // Mandar el comando puro al servidor
+          socket.emit("comando_voz", comando);
+        }
+      };
+
+      // Reiniciar automáticamente si se detiene (mientras no estemos hablando o si hubo error del sistema)
+      recognition.onend = () => {
+        if (activo) {
+          if (!pausaVoz || !window.speechSynthesis.speaking) {
+            pausaVoz = false; // Borrar estado perjudicial estático por fallo
+            setTimeout(() => {
+               try { recognition.start(); } catch (e) { }
+            }, 800);  // 800ms es mucho más tolerante en Android
+          }
+        }
+      };
+    } else {
+      setTimeout(() => {
+        estado.classList.add("status-panel__message--error");
+        estado.innerText = "⚠️ Tu navegador en el móvil no soporta reconocimiento de voz, o necesitas acceder mediante HTTPS en lugar de HTTP.";
+      }, 1000);
+    }
+
+    // Al pulsar el botón de conectar
+    boton.addEventListener("click", () => {
+      activo = true;
+      boton.style.display = "none";
+
+      // Mostrar menú
+      document.getElementById("menu-deportes").style.display = "flex";
+      document.getElementById("btn-mapa-toggle").style.display = "block";
+      document.getElementById("panel-ayudas").style.display = "flex";
+
+      estado.classList.add("status-panel__message--highlight");
+      panelEstado.classList.add("status-panel--active");
+      estado.innerText = "Selecciona un deporte para empezar...";
+
+
+
+      const msg = new SpeechSynthesisUtterance("Bienvenido al EIAI couch, ¿estás listo para entrenar? Elige la disciplina y vamos con ello.");
+      window._msgArr = msg; // Antidote against Android GC killing onend blindly
+      msg.lang = "es-ES";
+      msg.onstart = () => { pausaVoz = true; if (recognition) { try { recognition.abort(); } catch(e){} } };
+      msg.onend = () => { pausaVoz = false; if (recognition && activo) { setTimeout(()=> {try { recognition.start(); } catch(e){}}, 400); } };
+      window.speechSynthesis.speak(msg);
+
+      // ======= ARRANCAR CÁMARA MÓVIL AL PULSAR (Requisito de Permisos del SO) =======
+      const videoMovil = document.getElementById("video-mobile");
+      const canvasMovil = document.getElementById("canvas-mobile");
+      const ctxMovil = canvasMovil.getContext("2d");
+
+      navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 320 }, height: { ideal: 240 } },
+        audio: false
+      }).then((stream) => {
+        currentStream = stream; // Guardar referencia global
+        videoMovil.srcObject = stream;
+        videoMovil.play();
+
+        // Arrancar el loop por primera vez
+        iniciarLoopCamara();
+
+        // ARRANCAR RECONOCIMIENTO TRAS CÁMARA PARA EVITAR BLOQUEO
         if (recognition) {
           try {
             recognition.start();
           } catch (e) {
-            estado.classList.remove("status-panel__message--highlight");
-            estado.classList.add("status-panel__message--error");
-            panelEstado.classList.add("status-panel--alert");
-            estado.innerText = "Error al arrancar micrófono: " + e.message;
+            console.error(e); // Si ya estaba arrancado por culpa de TTS saltará aquí, lo cual es normal.
           }
         }
+      }).catch((err) => {
+        estado.innerText = "Error cámara móvil: " + err.message;
+        estado.classList.add("status-panel__message--error");
 
-        const msg = new SpeechSynthesisUtterance("Bienvenido al IA COACH, ¿estás listo para entrenar? Ponte en forma de T para calibrar tu cuerpo, selecciona la disciplina a entrenar, di iniciar, y vamos con ello!");
+        // Failsafe: Arrancar micro si no dio camara
+        if (recognition) {
+          try { recognition.start(); } catch (e) { }
+        }
+      });
+    });
+
+    // Escuchamos los mensajes que manda el ordenador
+    socket.on("feedback", (data) => {
+      if (activo) {
+        const msg = new SpeechSynthesisUtterance(data.mensaje);
+        window._msgArr = msg; // Antidote against Android GC blinding
         msg.lang = "es-ES";
+        msg.onstart = () => { pausaVoz = true; if (recognition) { try { recognition.abort(); } catch(e){} } };
+        msg.onend = () => { pausaVoz = false; if (recognition && activo) { setTimeout(()=> {try { recognition.start(); } catch(e){}}, 400); } };
         window.speechSynthesis.speak(msg);
-      });
 
-      // Escuchamos los mensajes que manda el ordenador
-      socket.on("feedback", (data) => {
-        if (activo) {
-          // Reproducimos la instrucción.
-          const msg = new SpeechSynthesisUtterance(data.mensaje);
-          msg.lang = "es-ES";
-          window.speechSynthesis.speak(msg);
+        panelEstado.classList.remove("status-panel--active");
+        panelEstado.classList.add("status-panel--alert");
 
-          // Actualizamos visualmente el móvil
-          panelEstado.classList.remove("status-panel--active");
-          panelEstado.classList.add("status-panel--alert");
-          
-          estado.classList.remove("status-panel__message--active", "status-panel__message--highlight");
+        estado.classList.remove("status-panel__message--active", "status-panel__message--highlight");
+        estado.classList.add("status-panel__message--error");
+        estado.innerText = "Última instrucción: " + data.mensaje;
+
+        if (data.mensaje === "¡Ahora mucho mejor!" || data.mensaje.includes("Modo") || data.mensaje.includes("Entrenamiento")) {
+          panelEstado.classList.remove("status-panel--alert");
+          panelEstado.classList.add("status-panel--active");
+          estado.classList.remove("status-panel__message--error");
+          estado.classList.add("status-panel__message--highlight");
+        }
+      }
+    });
+
+    // Escuchar del PC cuando un deporte se ha terminado de procesar
+    socket.on("deporte_completado", (deporte) => {
+      enMedioDeDeporte = false;
+      
+      // Marcar tarjeta como hecha (usando texto original para no acumular)
+      const tarjeta = document.getElementById("tarjeta-" + deporte);
+      if (tarjeta) {
+        tarjeta.style.opacity = "0.4";
+        tarjeta.style.pointerEvents = "none";
+        tarjeta.innerText = (textosOriginalesTarjetas[deporte] || deporte) + " ✓";
+      }
+
+      // Mostrar botón de volver manual y parar retransmisión
+      document.getElementById("vista-post").style.display = "none";
+      document.getElementById("btn-volver-menu").style.display = "block";
+      document.getElementById("panel-ayudas").style.display = "none";
+
+      pararCamara(); // Para el stream y libera la cámara correctamente
+
+      deportesCompletados++;
+
+      // Todos los deportes se tratan igual: mostrar botón de volver
+      estado.innerText = "Entrenamiento terminado y datos guardados. Pulsa Volver al Menú.";
+      estado.className = "status-panel__message status-panel__message--highlight";
+      panelEstado.className = "status-panel status-panel--active";
+    });
+
+    // ACCIONES UI
+    function abrirModal(id) {
+      document.getElementById(id).classList.add("visible");
+    }
+
+    function cerrarModal(id) {
+      document.getElementById(id).classList.remove("visible");
+    }
+
+    const CONTENIDO_MANUAL = {
+      bici: `
+        <h3>🚴‍♂️ Bicicleta &mdash; Controles</h3>
+        <p style="margin-bottom:10px; font-size:0.85rem; color:var(--text-muted);"><i>Acciones controladas íntegramente por Voz o Botones Táctiles.</i></p>
+        <h3>Feedback Visual (IA)</h3>
+        <p style="font-size:0.85rem; margin-bottom:10px;">Al calibrar tu postura, el esqueleto se pintará en <b>morado</b> y su tamaño crecerá. Sostenla 2 segundos para validar.</p>
+        <h3>Comandos de Voz</h3>
+        <ul>
+          <li><b>"Saltar Calibración":</b> Omite T-POSE</li>
+          <li><b>"Pausar / Reanudar":</b> Detiene el crono</li>
+          <li><b>"Terminar":</b> Muestra resumen</li>
+        </ul>`,
+      natacion: `
+        <h3>🏊‍♂️ Natación &mdash; Controles</h3>
+        <p style="margin-bottom:10px; font-size:0.85rem; color:var(--text-muted);"><i>Acciones controladas íntegramente por Voz o Botones Táctiles.</i></p>
+        <h3>Feedback Visual (IA)</h3>
+        <p style="font-size:0.85rem; margin-bottom:10px;">Al calibrar tu postura, el esqueleto se pintará en <b>morado</b> y su tamaño crecerá. Sostenla 2 segundos para validar.</p>
+        <h3>Comandos de Voz</h3>
+        <ul>
+          <li><b>"Saltar Calibración":</b> Omite T-POSE</li>
+          <li><b>"Pausar / Reanudar":</b> Detiene el crono</li>
+          <li><b>"Terminar":</b> Muestra resumen</li>
+        </ul>`,
+      correr: `
+        <h3>🏃‍♂️ Correr &mdash; Controles</h3>
+        <p style="margin-bottom:10px; font-size:0.85rem; color:var(--text-muted);"><i>Acciones controladas íntegramente por Voz o Botones Táctiles.</i></p>
+        <h3>Feedback Visual (IA)</h3>
+        <p style="font-size:0.85rem; margin-bottom:10px;">Al calibrar tu postura, el esqueleto se pintará en <b>morado</b> y su tamaño crecerá. Sostenla 2 segundos para validar.</p>
+        <h3>Comandos de Voz</h3>
+        <ul>
+          <li><b>"Saltar Calibración":</b> Omite T-POSE</li>
+          <li><b>"Pausar / Reanudar":</b> Detiene el crono</li>
+          <li><b>"Terminar":</b> Muestra resumen</li>
+        </ul>`
+    };
+
+    const CONTENIDO_CORRECCIONES = {
+      bici: `
+        <h3>🚴‍♂️ Bicicleta</h3>
+        <ul>
+          <li>Maneja un ángulo en el torso. Evita encorvar el cuello.</li>
+          <li>No bajes en exceso las rodillas (postura agresiva).</li>
+          <li>Flexiona ligeramente los codos, evita la tensión.</li>
+        </ul>`,
+      natacion: `
+        <h3>🏊‍♂️ Natación</h3>
+        <ul>
+          <li>Mantén el cuello recto con la columna.</li>
+          <li>No dejes caer los codos bajo los hombros durante la brazada.</li>
+          <li>Estira completamente las piernas al patalear.</li>
+        </ul>`,
+      correr: `
+        <h3>🏃‍♂️ Correr</h3>
+        <ul>
+          <li>Espalda totalmente recta, evita la inclinación frontal.</li>
+          <li>Controla la alzada de la rodilla (no sobreelevar).</li>
+          <li>Vista al frente para no colapsar la nuca.</li>
+        </ul>`
+    };
+
+    function seleccionarDeporte(deporteLimpio) {
+      if (enMedioDeDeporte) return;
+      enMedioDeDeporte = true;
+
+      socket.emit("comando_voz", "iniciar " + deporteLimpio);
+
+      estado.classList.remove("status-panel__message--error");
+      estado.classList.add("status-panel__message--active");
+      estado.innerText = "Seleccionado: " + deporteLimpio;
+
+      // CAMBIO DE THEME CSS en Base al deporte
+      let temaClass = "tema-" + (deporteLimpio === "natacion" ? "nadar" : deporteLimpio);
+      document.body.className = "app-body " + temaClass;
+
+      // CAMBIOS VISTA: Ocultamos PRE, Mostramos POST
+      document.getElementById("vista-pre").style.display = "none";
+      document.getElementById("vista-post").style.display = "flex";
+      document.getElementById("btn-saltar-calibracion").style.display = "block";
+
+      // Actualizar modales con info sólo de ese deporte
+      document.getElementById("manual-contenido").innerHTML = CONTENIDO_MANUAL[deporteLimpio] || CONTENIDO_MANUAL.correr;
+      document.getElementById("correcciones-contenido").innerHTML = CONTENIDO_CORRECCIONES[deporteLimpio] || CONTENIDO_CORRECCIONES.correr;
+
+      // REINICIAR loop de cámara o rearrancar el stream si fue parado
+      if (currentStream) {
+        // El stream sigue vivo (ej: primer deporte del día) — solo reiniciar el loop RAF
+        iniciarLoopCamara();
+      } else {
+        // El stream fue liberado (ej: tras volver al menú después de terminar) — rearrancar cámara
+        navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: { ideal: 320 }, height: { ideal: 240 } },
+          audio: false
+        }).then((stream) => {
+          currentStream = stream;
+          videoMovil.srcObject = stream;
+          videoMovil.play();
+          iniciarLoopCamara();
+        }).catch((err) => {
+          estado.innerText = "Error al reabrir cámara: " + err.message;
           estado.classList.add("status-panel__message--error");
-          estado.innerText = "Última instrucción: " + data.mensaje;
+        });
+      }
+    }
 
-          // Volvemos el color a la normalidad si nos felicita (o si es un comando neutral)
-          if (data.mensaje === "¡Ahora mucho mejor!" || data.mensaje.includes("Modo") || data.mensaje.includes("Entrenamiento")) {
-            panelEstado.classList.remove("status-panel--alert");
-            panelEstado.classList.add("status-panel--active");
-            
-            estado.classList.remove("status-panel__message--error");
-            estado.classList.add("status-panel__message--highlight");
-          }
+    function saltarCalibracion() {
+      socket.emit("saltar_calibracion");
+      document.getElementById("btn-saltar-calibracion").style.display = "none";
+      estado.innerText = "Entrenamiento Iniciado. ¡A por todas!";
+    }
+
+    function resetearManual() {
+      enMedioDeDeporte = false;
+      socket.emit("reset_manual");
+
+      document.getElementById("btn-volver-menu").style.display = "none";
+      document.getElementById("vista-pre").style.display = "flex";
+      document.getElementById("panel-ayudas").style.display = "flex";
+      document.body.className = "app-body";
+
+      if (deportesCompletados >= 3) {
+        // Los 3 completados: mostrar tarjetas opacas con modal de felicitación
+        estado.innerText = "🏆 ¡Triatlón completado! Cierra el mensaje para empezar de nuevo.";
+        abrirModal("modal-felicitacion");
+        // Las tarjetas permanecen opacas hasta cerrar el modal
+      } else {
+        estado.innerText = "Elige otro reto para continuar.";
+      }
+    }
+
+    function cerrarFelicitacion() {
+      cerrarModal("modal-felicitacion");
+      // Ahora sí reseteamos las tarjetas y el contador
+      deportesCompletados = 0;
+      ["bici", "natacion", "correr"].forEach(d => {
+        const t = document.getElementById("tarjeta-" + d);
+        if (t) {
+          t.style.opacity = "1";
+          t.style.pointerEvents = "auto";
+          t.innerText = textosOriginalesTarjetas[d] || d; // Restaurar texto original
         }
       });
-    </script>
-  </body>
+      estado.innerText = "🎉 ¡Listo para un nuevo triatlón! Elige deporte.";
+    }
+
+    function rechazarCambioDeporte() {
+      const msgError = new SpeechSynthesisUtterance("Por favor, finaliza primero el deporte actual para salir.");
+      window._msgArr = msgError; // Antidote contra colector GC
+      msgError.lang = "es-ES";
+      msgError.onstart = () => { pausaVoz = true; if (recognition) { try { recognition.abort(); } catch(e){} } };
+      msgError.onend = () => { pausaVoz = false; if (recognition && activo) { setTimeout(()=> {try { recognition.start(); } catch(e){}}, 400); } };
+      window.speechSynthesis.speak(msgError);
+      
+      estado.innerText = "⚠️ Debes terminar el deporte actual primero.";
+      estado.classList.remove("status-panel__message--active");
+      estado.classList.add("status-panel__message--error");
+    }
+  </script>
+
+  <script>
+    let mapa;
+    let marcadorUsuario;
+    let marcadoresGimnasios = [];
+
+    const iconoUsuario = L.icon({
+      iconUrl: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+      iconSize: [32, 32],
+      iconAnchor: [16, 32]
+    });
+
+    const iconoGym = L.icon({
+      iconUrl: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
+      iconSize: [32, 32],
+      iconAnchor: [16, 32]
+    });
+
+    function cerrarMapa() {
+      document.getElementById("mapa-wrapper").style.display = "none";
+      document.getElementById("btn-mapa-toggle").style.display = "block";
+    }
+
+    function mostrarMapa() {
+      document.getElementById("mapa-wrapper").style.display = "block";
+      document.getElementById("btn-mapa-toggle").style.display = "none";
+
+      if (!navigator.geolocation) {
+        alert("Geolocalización no soportada");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition((pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        if (!mapa) {
+          mapa = L.map("mapa-container").setView([lat, lng], 14);
+
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "© OpenStreetMap",
+          }).addTo(mapa);
+
+          setTimeout(() => mapa.invalidateSize(), 100);
+        } else {
+          mapa.flyTo([lat, lng], 14);
+          setTimeout(() => mapa.invalidateSize(), 100);
+        }
+
+        if (marcadorUsuario) mapa.removeLayer(marcadorUsuario);
+
+        marcadorUsuario = L.marker([lat, lng], { icon: iconoUsuario })
+          .addTo(mapa)
+          .bindPopup("📍 Estás aquí")
+          .openPopup();
+
+        marcadoresGimnasios.forEach(m => mapa.removeLayer(m));
+        marcadoresGimnasios = [];
+
+        const radio = 5000;
+        const query = `
+        [out:json];
+        (
+          node["leisure"="fitness_centre"](around:${radio},${lat},${lng});
+          node["sport"="swimming"](around:${radio},${lat},${lng});
+        );
+        out;
+      `;
+
+        cargarGimnasios(query, lat, lng);
+      });
+    }
+
+    function cargarGimnasios(query, lat, lng, intentos = 2) {
+      fetch("https://overpass-api.de/api/interpreter", {
+        method: "POST",
+        body: query
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (!data.elements || data.elements.length === 0) {
+            alert("No hay gimnasios cerca de tu ubicación");
+            return;
+          }
+
+          data.elements.forEach((lugar) => {
+            const nombre = lugar.tags?.name || "Gimnasio";
+
+            let icono = "🏋️";
+            let extra = "";
+
+            if (lugar.tags?.sport === "swimming") {
+              icono = "🏊";
+              extra = " (piscina incluida)";
+            }
+
+            const marker = L.marker([lugar.lat, lugar.lon], { icon: iconoGym })
+              .addTo(mapa)
+              .bindPopup(`${icono} ${nombre}${extra}`);
+
+            marcadoresGimnasios.push(marker);
+          });
+        })
+        .catch(err => {
+          if (intentos > 0) {
+            console.log("Reintentando...");
+            setTimeout(() => cargarGimnasios(query, lat, lng, intentos - 1), 1000);
+          } else {
+            alert("No se pudieron cargar los gimnasios. Inténtalo de nuevo.");
+          }
+        });
+    }
+  </script>
+</body>
+
 </html>

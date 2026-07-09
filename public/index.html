@@ -1,78 +1,141 @@
 <!doctype html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Triatlón IA - Espejo Digital</title>
 
-    <link
-      href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap"
-      rel="stylesheet"
-    />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Triatlon AI Coach</title>
 
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <header>
-      <h1>Triatlón <span>AI Coach</span></h1>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,600;0,900;1,900&family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap"
+    rel="stylesheet" />
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body class="ux-grid-body">
+
+  <!-- OVERLAY ESPERANDO CONEXIÓN MÓVIL P2 -->
+  <div id="overlay-esperando">
+    <h2>Triatlón AI Coach</h2>
+    <p>Esperando selección de deporte desde el dispositivo móvil...</p>
+  </div>
+
+  <!-- OVERLAY RESUMEN FINAL -->
+  <div id="overlay-resumen" class="oculto">
+    <div class="tarjeta-resumen">
+      <h2>📊 Resumen del Entrenamiento</h2>
+      <div class="stats-grid">
+        <div class="stat">
+          <span>Deporte</span>
+          <span id="resumen-deporte" class="destacado">...</span>
+        </div>
+        <div class="stat">
+          <span>Tiempo</span>
+          <span id="resumen-tiempo" class="destacado">00:00</span>
+        </div>
+        <div class="stat">
+          <span>Errores Corregidos</span>
+          <span id="resumen-errores" style="color: var(--accent-yellow)" class="destacado">0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main class="smart-mirror-layout">
+    <!-- CABECERA -->
+    <header class="panel-glass top-header">
+      <h1 style="margin:0;">Triatlon <span style="color:var(--accent-sport);">AI Coach</span></h1>
+      <div id="modo-deporte" class="header-status">ESPERANDO</div>
+      <div id="reloj-digital">00:00:00</div>
     </header>
 
-    <div id="contenedor-video">
+    <!-- ASIDE IZQUIERDO -->
+    <aside class="panel-glass aside-left difuminado" id="dashboard">
+      <h3>Rendimiento</h3>
+      <div class="stat-box">
+        <span class="label">KCAL QUEMADAS</span>
+        <span class="number" id="kcal-counter">0</span>
+      </div>
+      <div class="stat-box">
+        <span class="label">TIEMPO</span>
+        <span class="number" id="crono">00:00</span>
+      </div>
+      <div class="stat-box">
+        <span class="label">ERRORES</span>
+        <span class="number" id="contador-errores" style="color:var(--accent-yellow)">0</span>
+      </div>
+
+      <span id="estado-entrenamiento" style="display:none;"></span>
+    </aside>
+
+    <!-- CENTRO: CÁMARA (Main Canvas) -->
+    <section class="video-section difuminado" id="contenedor-video">
       <div id="loading-overlay">
         <div class="spinner"></div>
-        <p>Cargando Motores de IA...</p>
+        <p>Esperando señal de vídeo remota del móvil...</p>
       </div>
-      <video id="video" width="800" height="600" autoplay playsinline></video>
+
+      <div id="overlay-cuenta" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:100; align-items:center; justify-content:center; flex-direction:column; backdrop-filter:blur(5px);">
+        <span id="numero-cuenta" style="font-size:18rem; font-weight:900; color:var(--accent-sport); text-shadow:0 0 50px var(--accent-sport); line-height:0.8;">5</span>
+        <span id="texto-cuenta" style="font-size:2rem; font-weight:700; color:white; text-shadow:0 0 20px black; text-transform:uppercase; margin-top:20px;">Prepárate...</span>
+      </div>
+      <img id="video" width="800" height="600" style="display:none;" />
       <canvas id="canvas" width="800" height="600"></canvas>
+      <div class="instruccion-flotante" id="mensaje">Sitúate en T-Pose frente a la cámara...</div>
+
       <div class="crosshair top-left"></div>
       <div class="crosshair top-right"></div>
       <div class="crosshair bottom-left"></div>
       <div class="crosshair bottom-right"></div>
-    </div>
+    </section>
 
-    <div id="dashboard">
-      <div class="panel-info">
-        <span class="label">Modo / Tiempo</span>
-        <span id="estado-entrenamiento" class="value">Calibrando</span>
-        <div id="crono" class="info-extra">00:00</div>
+    <!-- ASIDE DERECHO -->
+    <aside class="panel-glass aside-right" id="panel-derecho">
+      <h3>Registro de IA</h3>
+      <div id="ai-log" class="ai-scroll-box">
+        <p><i>[Sistema Iniciado]</i></p>
       </div>
-      <div class="panel-info alerta">
-        <span class="label">Guía e Instrucciones</span>
-        <h3 id="mensaje">Sitúate en T-Pose frente a la cámara...</h3>
-      </div>
-      <div class="panel-info">
-        <span class="label">Deporte / Fallos</span>
-        <span id="modo-deporte" class="value" style="color: var(--text-muted)">?</span>
-        <div id="contador-errores" class="info-extra">Errores: 0</div>
-      </div>
-    </div>
 
-    <!-- OVERLAY RESUMEN FINAL -->
-    <div id="overlay-resumen" class="oculto">
-      <div class="tarjeta-resumen">
-        <h2>📊 Resumen del Entrenamiento</h2>
-        <div class="stats-grid">
-          <div class="stat-item">
-            <span class="stat-label">Deporte practicado</span>
-            <span class="stat-valor" id="resumen-deporte">-</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Tiempo Activo</span>
-            <span class="stat-valor" id="resumen-tiempo">00:00</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Errores Posturales y Correcciones</span>
-            <span class="stat-valor" id="resumen-errores">0</span>
-          </div>
-        </div>
-        <p style="margin-top: 20px; font-size: 0.9rem; color: var(--text-muted)">Volviendo al menú principal en 10 segundos...</p>
+      <div class="debug-panel">
+        <span class="label">SISTEMA MEDIAPIPE</span>
+        <span class="score-verde">Conectado</span>
       </div>
-    </div>
+    </aside>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
-    <script src="app.js"></script>
-  </body>
+    <!-- FOOTER -->
+    <footer class="panel-glass bottom-footer">
+      <marquee id="marquee-footer" scrollamount="5">💧 Bebe 500ml de agua antes de entrenar - 😈 Revisa el meme de hoy -
+        🏃 Calienta 10 min antes de cada sesión - 😈 Revisa el meme de hoy - 🥗 Come proteínas tras el ejercicio para
+        recuperar músculo - 😈 Revisa el meme de hoy - 💤 Duerme 8h: el músculo crece en el descanso - 😈 Revisa el meme
+        de hoy - 💧 Hidrátate cada 15-20 min durante el entreno - 😈 Revisa el meme de hoy - 🫀 Mantén el ritmo cardíaco
+        al 60-80% de tu máximo - 😈 Revisa el meme de hoy - 🥑 Las grasas saludables cuidan tus articulaciones - 😈
+        Revisa
+        el meme de hoy - 🧘 El stretching post-entreno reduce lesiones un 40% - 😈 Revisa el meme de hoy - 🍌 Un plátano
+        antes del entreno te da energía sostenida - 😈 Revisa el meme de hoy - 💧 Orina clara = hidratación correcta -
+        😈 Revisa el meme de hoy - 🏊 En natación, exhala siempre bajo el agua - 😈 Revisa el meme de hoy - 🚴 Rodilla
+        ligeramente flexionada en pedalada baja - 😈 Revisa el meme de hoy - 🥦 Verduras de hoja verde reponen el hierro
+        perdido - 😈 Revisa el meme de hoy - ⏱️ Descansa 48h antes de trabajar el mismo grupo muscular de nuevo -
+        😈 Revisa el meme de hoy - 💧 Suma 500ml de agua por cada hora de ejercicio intenso - 😈 Revisa el meme de hoy -
+        🫁 Respira por la nariz al trotar para filtrar mejor el aire - 😈 Revisa el meme de hoy - 🍳 Un huevo = 6g de
+        proteína, ideal para el desayuno del triatleta - 😈 Revisa el meme de hoy - 🏅 La constancia supera al talento:
+        entrena cada día aunque sea poco - 😈 Revisa el meme de hoy - 💧 El café mejora el rendimiento aeróbico un 5-10%
+        - 😈 Revisa el meme de hoy - 🧂 Isotónicas en sesiones largas para reponer el sodio - 😈 Revisa el meme de hoy -
+        🦵 Un core fuerte mejora la eficiencia en los 3 deportes - 😈 Revisa el meme de hoy - 🍇 Los frutos rojos
+        reducen
+        el daño muscular post-esfuerzo - 😈 Revisa el meme de hoy - 💧 No esperes a tener sed, ya es señal de
+        deshidratación - 😈 Revisa el meme de hoy - 🧠 Visualiza el éxito antes de competir: el mental es el cuarto
+        deporte - 😈 Revisa el meme de hoy - 🩹 Hielo 20 min en zonas inflamadas después del entreno</marquee>
+    </footer>
+  </main>
+
+  <!-- SCRIPTS -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+
+  <script src="app.js"></script>
+</body>
+
 </html>

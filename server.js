@@ -69,6 +69,28 @@ io.on("connection", (socket) => {
     });
   });
 
+  // ========= NUEVO: RETRANSMISIÓN DE VÍDEO MÓVIL P2 =========
+  socket.on("stream_movil", (frameBase64) => {
+    // Retransmitimos todos los bytes de la imagen a todo el mundo (al PC Espejo)
+    socket.broadcast.emit("stream_espejo", frameBase64);
+  });
+
+  socket.on("saltar_calibracion", () => {
+    // Avisar al PC de que se salte la T-Pose
+    io.emit("comando_ordenador", "saltar_calibracion");
+  });
+
+  // ========= NUEVO: SEGUIMIENTO DE ENTRENAMIENTOS =========
+  socket.on("deporte_completado", (deporte) => {
+    // Avisar al móvil de que se ha terminado uno de los portes para que lo tache
+    socket.broadcast.emit("deporte_completado", deporte);
+  });
+
+  socket.on("reset_manual", () => {
+    // Retransmitimos la orden de reinicio total y apagado de cámara
+    io.emit("reset_manual");
+  });
+
   socket.on("disconnect", () => {
     console.log("🔴 Cliente desconectado");
   });
