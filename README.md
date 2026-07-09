@@ -1,19 +1,61 @@
 # 🏊‍♂️ Triathlon Training Assistant
 
-A real-time web application designed to assist triathlon athletes during training through interactive tools, live communication and performance monitoring.
+A real-time web application that helps triathlon athletes improve their training experience through live communication, interactive interfaces and real-time feedback.
 
 This project was developed as part of a university team project at Universidad Carlos III de Madrid.
 
 ---
 
-## 🚀 Features
+## 📖 Overview
 
-- Interactive training interface
-- Real-time communication using Socket.IO
-- Responsive user interface
-- Training mode for different triathlon disciplines
+Triathlon Training Assistant is a real-time web application developed as a university project to improve the training experience of triathlon athletes.
+
+The system connects a smartphone and a computer through Socket.IO. The smartphone captures the athlete using its camera while the desktop application performs posture analysis in real time using MediaPipe Pose.
+
+During training, users receive voice feedback, can control the application using speech recognition, monitor live statistics and access complementary tools designed for indoor triathlon sessions.
 
 ---
+
+## 🚀 Features
+
+- Real-time posture analysis using MediaPipe Pose
+- Live communication between mobile and desktop using Socket.IO
+- Voice commands with Speech Recognition
+- Voice feedback using Speech Synthesis
+- Interactive training dashboard
+- Automatic workout calibration
+- Multiple training modes (Running, Swimming and Cycling)
+- Automatic pause when no athlete is detected
+- Nearby gym finder using Leaflet and OpenStreetMap
+- Session statistics and performance summary
+
+---
+
+## 🏗️ Architecture
+
+The application follows a distributed client-server architecture.
+
+Mobile device
+
+↓
+
+Captures the athlete
+
+↓
+
+Node.js Server
+
+↓
+
+Desktop application
+
+↓
+
+MediaPipe Pose Analysis
+
+↓
+
+Voice feedback
 
 ## 💻 Technologies
 
@@ -23,16 +65,45 @@ This project was developed as part of a university team project at Universidad C
 - Node.js
 - Express
 - Socket.IO
+- MediaPipe Pose
+- Web Speech API
+- Leaflet
+- OpenStreetMap API
+
+---
+
+## ⚙️ Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/sergio-villafuertes/triathlon-training-assistant.git
+```
+
+Install the dependencies:
+
+```bash
+npm install
+```
+
+Start the application:
+
+```bash
+npm run tunnel
+```
+
+Once the server is running, open your browser and access the application through the generated local address.
 
 ---
 
 ## 👨‍💻 My Contributions
 
-As part of the development team, I contributed to:
+My main contributions included:
 
-- Development of features in `app.js`, including the interactive map used to locate nearby sports facilities.
-- Design and implementation of several user interface components using HTML and CSS.
-- Front-end integration and testing to improve usability.
+- Development of several client-side features in app.js.
+- Implementation of user interface components using HTML and CSS.
+- Front-end integration and usability improvements.
+- Testing and debugging during application development.
 
 ---
 
@@ -59,8 +130,14 @@ triathlon-training-assistant
 
 ## 🔮 Future Improvements
 
-- Improve posture analysis.
-- Enhance the user interface.
-- Add user authentication.
-- Improve mobile support.
-- Extend training analytics.
+- Adaptive posture profiles.
+- Session history.
+- User authentication.
+- Performance analytics.
+- Improved posture detection.
+
+---
+
+## 📄 License
+
+This project is distributed under the MIT License.
